@@ -1,70 +1,71 @@
 const Card = require('../models/card');
 
-const { VALIDATION_ERROR, NOT_FOUND, DEFAULT_ERROR } = require('../utils/errors');
+const BadRequest = require('../errors/BadRequest');
+const Forbidden = require('../errors/Forbidden');
+const NotFound = require('../errors/NotFound');
 
-module.exports.getCards = (req, res) => {
+module.exports.getCards = (req, res, next) => {
   Card.find({})
-    .then((cards) => res.send(cards))
-    .catch(() => {
-      res.status(DEFAULT_ERROR).send({ message: 'Произошла ошибка' });
-    });
+    .then((cards) => res.status(200).send(cards))
+    .catch(next);
 };
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = (req, res, next) => {
   const { _id } = req.user;
   const { name, link } = req.body;
   Card.create({ name, link, owner: _id })
     .then((card) => res.send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(VALIDATION_ERROR).send({ message: 'Переданы некорректные данные' });
-      } else {
-        res.status(DEFAULT_ERROR).send({ message: 'Произошла ошибка' });
+        throw new BadRequest('Переданы некорректные данные');
       }
-    });
+    })
+    .catch(next);
 };
 
-module.exports.deleteCard = (req, res) => {
-  Card.findByIdAndDelete(req.params.cardId)
-    .orFail(() => new Error('Not Found'))
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(VALIDATION_ERROR).send({ message: 'Переданы некорректные данные' });
-      } else if (err.message === 'Not Found') {
-        res.status(NOT_FOUND).send({ message: 'Карточка с указанным id не найдена' });
+module.exports.deleteCard = (req, res, next) => {
+  const { cardId } = req.params;
+
+  return Card.findById(cardId)
+    .orFail(() => {
+      throw new NotFound('Карточка с указанным id не найдена');
+    })
+    .then((card) => {
+      if (card.owner.toString() === req.user._id) {
+        Card.findByIdAndRemove(cardId).then(() => res.status(200).send(card));
       } else {
-        res.status(DEFAULT_ERROR).send({ message: 'Произошла ошибка' });
+        throw new Forbidden('В доступе отказано');
       }
-    });
+    })
+    .catch(next);
 };
 
-module.exports.likeCard = (req, res) => {
-  Card.findByIdAndUpdate(req.params.cardId, { $addToSet: { likes: req.user._id } }, { new: true })
-    .orFail(() => new Error('Not Found'))
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(VALIDATION_ERROR).send({ message: 'Переданы некорректные данные' });
-      } else if (err.message === 'Not Found') {
-        res.status(NOT_FOUND).send({ message: 'Карточка с указанным id не найдена' });
-      } else {
-        res.status(DEFAULT_ERROR).send({ message: 'Произошла ошибка' });
+module.exports.likeCard = (req, res, next) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $addToSet: { likes: req.user._id } },
+    { new: true },
+  )
+    .then((card) => {
+      if (!card) {
+        return next(new NotFound('Карточка с указанным id не найдена'));
       }
-    });
+      return res.status(200).send(card);
+    })
+    .catch(next);
 };
 
-module.exports.dislikeCard = (req, res) => {
-  Card.findByIdAndUpdate(req.params.cardId, { $pull: { likes: req.user._id } }, { new: true })
-    .orFail(() => new Error('Not Found'))
-    .then((card) => res.send(card))
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res.status(VALIDATION_ERROR).send({ message: 'Переданы некорректные данные' });
-      } else if (err.message === 'Not Found') {
-        res.status(NOT_FOUND).send({ message: 'Карточка с указанным id не найдена' });
-      } else {
-        res.status(DEFAULT_ERROR).send({ message: 'Произошла ошибка' });
+module.exports.dislikeCard = (req, res, next) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $pull: { likes: req.user._id } },
+    { new: true },
+  )
+    .then((card) => {
+      if (!card) {
+        return next(new NotFound('Карточка с указанным id не найдена'));
       }
-    });
+      return res.status(200).send(card);
+    })
+    .catch(next);
 };
