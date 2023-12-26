@@ -46,12 +46,12 @@ module.exports.createUser = (req, res, next) => {
     .then((user) => res.status(201).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequest('Переданы некорректные данные');
+        next(new BadRequest('Переданы некорректные данные'));
       } else if (err.code === 11000) {
-        throw new Conflict('Пользователь с таким e-mail уже зарегистрирован');
+        next(new Conflict('Пользователь с таким e-mail уже зарегистрирован'));
       }
-    })
-    .catch(next);
+      next(err);
+    });
 };
 
 module.exports.updateUser = (req, res, next) => {
@@ -88,13 +88,13 @@ module.exports.updateAvatar = (req, res, next) => {
 
 module.exports.login = (req, res, next) => {
   const { email, password } = req.body;
-  return User.findUserByCredentials(email, password)
-    .then((user) => {
-      if (!email || !password) {
-        return next(new UnathorizedError('Неправильный email или пароль.'));
+  User.findUserByCredentials(email, password)
+    .then(({ _id: userId }) => {
+      if (userId) {
+        const token = jwt.sign({ userId }, 'some-secret-key', { expiresIn: '7d' });
+        return res.send({ _id: token });
       }
-      const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: '7d' });
-      return res.send({ token });
+      throw new UnathorizedError('Неправильные почта или пароль');
     })
     .catch(next);
 };
