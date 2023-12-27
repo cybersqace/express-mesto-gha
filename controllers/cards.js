@@ -17,10 +17,11 @@ module.exports.createCard = (req, res, next) => {
     .then((card) => res.send(card))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequest('Переданы некорректные данные');
+        next(new BadRequest('Переданы некорректные данные'));
+      } else {
+        next(err);
       }
-    })
-    .catch(next);
+    });
 };
 
 module.exports.deleteCard = (req, res, next) => {
@@ -44,14 +45,19 @@ module.exports.likeCard = (req, res, next) => {
     req.params.cardId,
     { $addToSet: { likes: req.user._id } },
     { new: true },
-  )
-    .then((card) => {
-      if (!card) {
-        return next(new NotFound('Карточка с указанным id не найдена'));
+  ).orFail(() => {
+    throw new NotFound('Карточка с указанным id не найдена');
+  })
+    .then((card) => res.status(200).send(card))
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new BadRequest('Переданы некорректные данные'));
       }
-      return res.status(200).send(card);
-    })
-    .catch(next);
+      if (err.message === 'NotFound') {
+        next(new NotFound('Карточка с указанным id не найдена'));
+      }
+      next(err);
+    });
 };
 
 module.exports.dislikeCard = (req, res, next) => {
@@ -59,12 +65,17 @@ module.exports.dislikeCard = (req, res, next) => {
     req.params.cardId,
     { $pull: { likes: req.user._id } },
     { new: true },
-  )
-    .then((card) => {
-      if (!card) {
-        return next(new NotFound('Карточка с указанным id не найдена'));
+  ).orFail(() => {
+    throw new NotFound('Карточка с указанным id не найдена');
+  })
+    .then((card) => res.status(200).send(card))
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(new BadRequest('Переданы некорректные данные'));
       }
-      return res.status(200).send(card);
-    })
-    .catch(next);
+      if (err.message === 'NotFound') {
+        next(new NotFound('Карточка с указанным id не найдена'));
+      }
+      next(err);
+    });
 };

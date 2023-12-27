@@ -16,6 +16,9 @@ mongoose.connect('mongodb://127.0.0.1:27017/mestodb', {
   useNewUrlParser: true,
 });
 
+app.post('/signin', signInValidation, login);
+app.post('/signup', signUpValidation, createUser);
+
 app.use(auth);
 app.use('/', require('./routes/users'));
 
@@ -27,8 +30,6 @@ app.use((req, res, next) => {
 
 app.use(errors());
 app.use(errorHandler);
-app.post('/signin', signInValidation, login);
-app.post('/signup', signUpValidation, createUser);
 
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);

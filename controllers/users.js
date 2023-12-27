@@ -4,7 +4,7 @@ const User = require('../models/user');
 const NotFound = require('../errors/NotFound');
 const BadRequest = require('../errors/BadRequest');
 const Conflict = require('../errors/Conflict');
-const UnathorizedError = require('../errors/UnathorizedError');
+// const UnathorizedError = require('../errors/UnathorizedError');
 
 module.exports.getUsers = (req, res, next) => {
   User.find({})
@@ -50,7 +50,7 @@ module.exports.createUser = (req, res, next) => {
       } else if (err.code === 11000) {
         next(new Conflict('Пользователь с таким e-mail уже зарегистрирован'));
       }
-      next(err);
+      return next(err);
     });
 };
 
@@ -88,13 +88,10 @@ module.exports.updateAvatar = (req, res, next) => {
 
 module.exports.login = (req, res, next) => {
   const { email, password } = req.body;
-  User.findUserByCredentials(email, password)
-    .then(({ _id: userId }) => {
-      if (userId) {
-        const token = jwt.sign({ userId }, 'some-secret-key', { expiresIn: '7d' });
-        return res.send({ _id: token });
-      }
-      throw new UnathorizedError('Неправильные почта или пароль');
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: '7d' });
+      res.send({ _id: token });
     })
     .catch(next);
 };
