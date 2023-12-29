@@ -4,7 +4,6 @@ const User = require('../models/user');
 const NotFound = require('../errors/NotFound');
 const BadRequest = require('../errors/BadRequest');
 const Conflict = require('../errors/Conflict');
-// const UnathorizedError = require('../errors/UnathorizedError');
 
 module.exports.getUsers = (req, res, next) => {
   User.find({})
@@ -46,9 +45,9 @@ module.exports.createUser = (req, res, next) => {
     .then((user) => res.status(201).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        next(new BadRequest('Переданы некорректные данные'));
-      } else if (err.code === 11000) {
-        next(new Conflict('Пользователь с таким e-mail уже зарегистрирован'));
+        return next(new BadRequest('Переданы некорректные данные'));
+      } if (err.code === 11000) {
+        return next(new Conflict('Пользователь с таким e-mail уже зарегистрирован'));
       }
       return next(err);
     });
@@ -64,7 +63,7 @@ module.exports.updateUser = (req, res, next) => {
     .then((user) => res.status(200).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        next(new BadRequest('Переданы некорректные данные'));
+        return next(new BadRequest('Переданы некорректные данные'));
       }
       return next(err);
     });
@@ -80,7 +79,7 @@ module.exports.updateAvatar = (req, res, next) => {
     .then((user) => res.status(200).send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        next(new BadRequest('Переданы некорректные данные'));
+        return next(new BadRequest('Переданы некорректные данные'));
       }
       return next(err);
     });
